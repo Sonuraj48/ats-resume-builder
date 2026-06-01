@@ -147,47 +147,186 @@ async function loadResume() {
   }
 }
 
-const HTML2PDF_CDN =
-  "https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js";
+/** Load html2canvas + jsPDF on demand (works with ES modules, no global script tags) */
+let pdfModulesPromise = null;
 
-function loadHtml2Pdf() {
-  if (typeof window.html2pdf !== "undefined") {
-    return Promise.resolve(window.html2pdf);
-  }
-
-  const existing = document.querySelector('script[data-html2pdf="true"]');
-  if (existing) {
-    return new Promise((resolve, reject) => {
-      existing.addEventListener("load", () => resolve(window.html2pdf));
-      existing.addEventListener("error", () => reject(new Error("Failed to load PDF library")));
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = HTML2PDF_CDN;
-    script.dataset.html2pdf = "true";
-    script.onload = () => {
-      if (typeof window.html2pdf !== "undefined") resolve(window.html2pdf);
-      else reject(new Error("PDF library missing"));
+async function loadPdfLibraries() {
+  if (window.html2canvas && (window.jspdf?.jsPDF || window.jsPDF)) {
+    return {
+      html2canvas: window.html2canvas,
+      jsPDF: window.jspdf?.jsPDF || window.jsPDF,
     };
-    script.onerror = () => reject(new Error("Failed to load PDF library"));
+  }
+
+  if (!pdfModulesPromise) {
+    pdfModulesPromise = (async () => {
+      try {
+        await loadPdfScriptsFromCdn();
+        const jsPDF = window.jspdf?.jsPDF || window.jsPDF;
+        if (window.html2canvas && jsPDF) {
+          return { html2canvas: window.html2canvas, jsPDF };
+        }
+      } catch {
+        /* try ESM from CDN next */
+      }
+
+      const [html2canvasMod, jspdfMod] = await Promise.all([
+        import("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm"),
+        import("https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm"),
+      ]);
+      return {
+        html2canvas: html2canvasMod.default,
+        jsPDF: jspdfMod.jsPDF,
+      };
+    })();
+  }
+
+  try {
+    const libs = await pdfModulesPromise;
+    if (!libs.html2canvas || !libs.jsPDF) {
+      throw new Error("PDF libraries unavailable");
+    }
+    return libs;
+  } catch (err) {
+    pdfModulesPromise = null;
+    throw err;
+  }
+}
+
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[data-pdf-src="${src}"]`);
+    if (existing?.dataset.loaded === "true") {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.dataset.pdfSrc = src;
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
     document.head.appendChild(script);
   });
 }
 
-async function exportToPdf() {
-  saveStatus.textContent = "Preparing PDF…";
+async function loadPdfScriptsFromCdn() {
+  const local = [
+    "vendor/html2canvas.min.js",
+    "vendor/jspdf.umd.min.js",
+  ];
+  const remote = [
+    "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
+    "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js",
+  ];
 
-  let pdfLib;
+  for (let i = 0; i < 2; i++) {
+    try {
+      await loadScriptOnce(local[i]);
+    } catch {
+      await loadScriptOnce(remote[i]);
+    }
+  }
+}
+
+/** Build off-screen clone matching live preview width */
+function buildExportClone(source) {
+  const clone = source.cloneNode(true);
+  clone.removeAttribute("id");
+  clone.setAttribute("aria-hidden", "true");
+  clone.classList.add("cv-export-clone");
+
+  const sandbox = document.createElement("div");
+  sandbox.className = "pdf-export-sandbox";
+  sandbox.appendChild(clone);
+  document.body.appendChild(sandbox);
+
+  const previewWidth = Math.max(Math.round(source.getBoundingClientRect().width), 320);
+  clone.style.width = `${previewWidth}px`;
+  clone.style.maxWidth = `${previewWidth}px`;
+
+  return { clone, sandbox, previewWidth };
+}
+
+function pdfLinkHref(href) {
+  if (/^(mailto:|tel:)/i.test(href)) return href;
+  if (/^https?:\/\//i.test(href)) return href;
+  return `https://${href.replace(/^\/\//, "")}`;
+}
+
+/** Collect anchor positions relative to export root (same px space as the PDF page) */
+function collectExportLinks(rootEl) {
+  const rootRect = rootEl.getBoundingClientRect();
+  const links = [];
+
+  rootEl.querySelectorAll("a[href]").forEach((anchor) => {
+    const raw = anchor.getAttribute("href")?.trim();
+    if (!raw || raw === "#") return;
+    const href = pdfLinkHref(raw);
+
+    const rect = anchor.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return;
+
+    links.push({
+      href,
+      x: rect.left - rootRect.left,
+      y: rect.top - rootRect.top,
+      w: rect.width,
+      h: rect.height,
+    });
+  });
+
+  return links;
+}
+
+/**
+ * Invisible click areas over the rasterized resume.
+ * Positions are in the same unit as the PDF page (mm when exporting print-sized).
+ */
+function addPdfLinkAnnotations(pdf, links, mapRect, padMm) {
+  for (const { href, x, y, w, h } of links) {
+    const r = mapRect(x, y, w, h);
+    try {
+      pdf.link(
+        Math.max(0, r.x - padMm),
+        Math.max(0, r.y - padMm),
+        r.w + padMm * 2,
+        r.h + padMm * 2,
+        { url: href }
+      );
+    } catch (err) {
+      console.warn("PDF link skipped:", href, err);
+    }
+  }
+}
+
+/** Highest html2canvas scale that stays within browser canvas limits (~200 DPI print) */
+function getExportScale(contentWidth, contentHeight) {
+  const maxSide = 16384;
+  const preferred = 4;
+  const longest = Math.max(contentWidth, contentHeight, 1);
+  let scale = Math.min(preferred, Math.floor(maxSide / longest));
+  scale = Math.max(2, scale);
+  return scale;
+}
+
+async function exportToPdf() {
+  saveStatus.textContent = "Loading PDF tools…";
+
+  let html2canvas;
+  let JsPDF;
   try {
-    pdfLib = await loadHtml2Pdf();
-  } catch {
-    saveStatus.textContent = "PDF library not loaded. Check your connection and refresh.";
+    ({ html2canvas, jsPDF: JsPDF } = await loadPdfLibraries());
+  } catch (err) {
+    console.error(err);
+    saveStatus.textContent =
+      "Cannot load PDF tools. Connect to the internet, then refresh (Ctrl+F5).";
     return;
   }
 
-  // Export exact copy of on-screen preview (WYSIWYG)
+  saveStatus.textContent = "Preparing PDF…";
   updatePreview();
   const source = resumePreviewEl;
   if (!source?.innerHTML.trim()) {
@@ -195,50 +334,73 @@ async function exportToPdf() {
     return;
   }
 
-  const clone = source.cloneNode(true);
-  clone.removeAttribute("id");
-  clone.setAttribute("aria-hidden", "true");
-  clone.classList.add("cv-export-clone");
-
-  const page = document.createElement("div");
-  page.className = "pdf-export-page";
-  page.appendChild(clone);
-
-  const wrapper = document.createElement("div");
-  wrapper.className = "pdf-export-wrapper";
-  wrapper.appendChild(page);
-  document.body.appendChild(wrapper);
+  const filename = `${(headerFields.name?.value.trim() || "resume").replace(/\s+/g, "_").toLowerCase()}.pdf`;
+  const { clone, sandbox } = buildExportClone(source);
 
   await new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
 
-  const opt = {
-    margin: 0,
-    filename: `${(headerFields.name?.value.trim() || "resume").replace(/\s+/g, "_").toLowerCase()}.pdf`,
-    image: { type: "png", quality: 1 },
-    html2canvas: {
-      scale: 3,
+  const contentWidth = clone.offsetWidth;
+  const contentHeight = clone.scrollHeight;
+
+  if (contentWidth < 50 || contentHeight < 50) {
+    sandbox.remove();
+    saveStatus.textContent = "Preview is empty or too small to export.";
+    return;
+  }
+
+  const scale = getExportScale(contentWidth, contentHeight);
+
+  saveStatus.textContent = "Generating PDF…";
+
+  const exportLinks = collectExportLinks(clone);
+
+  try {
+    const canvas = await html2canvas(clone, {
+      scale,
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
-      letterRendering: true,
+      width: contentWidth,
+      height: contentHeight,
+      windowWidth: contentWidth,
+      windowHeight: contentHeight,
       scrollX: 0,
       scrollY: 0,
-      windowWidth: 816,
-    },
-    jsPDF: { unit: "in", format: "letter", orientation: "portrait", compress: true },
-    pagebreak: { mode: ["css", "legacy"] },
-  };
+      letterRendering: true,
+    });
 
-  saveStatus.textContent = "Generating PDF…";
-  try {
-    await pdfLib().set(opt).from(page).save();
+    const imgData = canvas.toDataURL("image/png");
+
+    const pageWidthMm = 215.9;
+    const pageHeightMm = (contentHeight / contentWidth) * pageWidthMm;
+
+    const pdf = new JsPDF({
+      unit: "mm",
+      format: [pageWidthMm, pageHeightMm],
+      orientation: "portrait",
+      compress: false,
+    });
+
+    pdf.addImage(imgData, "PNG", 0, 0, pageWidthMm, pageHeightMm, undefined, "NONE");
+
+    const mapRect = (x, y, w = 0, h = 0) => ({
+      x: (x / contentWidth) * pageWidthMm,
+      y: (y / contentHeight) * pageHeightMm,
+      w: w ? (w / contentWidth) * pageWidthMm : 0,
+      h: h ? (h / contentHeight) * pageHeightMm : 0,
+    });
+    const linkPadMm = Math.max(0.4, (2 / contentWidth) * pageWidthMm);
+    addPdfLinkAnnotations(pdf, exportLinks, mapRect, linkPadMm);
+    pdf.save(filename);
     saveStatus.textContent = "PDF ready — good luck with your application!";
-  } catch {
-    saveStatus.textContent = "PDF export failed. Try again.";
+  } catch (err) {
+    console.error("PDF export error:", err);
+    saveStatus.textContent =
+      "PDF export failed. Try a shorter resume or refresh the page.";
   } finally {
-    wrapper.remove();
+    sandbox.remove();
   }
 }
 

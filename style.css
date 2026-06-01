@@ -637,38 +637,28 @@ body {
   overflow: visible;
 }
 
-/* PDF export — US Letter page; border flush with paper edge */
-.pdf-export-wrapper {
+/* PDF capture sandbox — mirrors live preview (off-screen, still painted for canvas) */
+.pdf-export-sandbox {
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 100000;
+  z-index: 2147483647;
   pointer-events: none;
   background: #fff;
   overflow: visible;
-  width: 8.5in;
 }
 
-.pdf-export-page {
-  width: 8.5in;
-  max-width: 8.5in;
-  margin: 0;
-  padding: 0;
-  background: #fff;
-  box-sizing: border-box;
-}
-
-.pdf-export-page .cv-export-clone {
-  width: 100% !important;
-  max-width: 100% !important;
+.pdf-export-sandbox .cv-export-clone {
+  display: block;
+  min-width: 0 !important;
   margin: 0 !important;
   padding: 0.5in 0.55in !important;
-  border: 1px solid #bbb !important;
+  border: 1px solid #ccc !important;
   box-shadow: none !important;
   box-sizing: border-box !important;
   background: #fff !important;
+  overflow: visible !important;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
