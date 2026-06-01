@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — ATS Resume Builder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main navigation">
+      <a href="index.html" class="logo">
+        <span class="logo-mark" aria-hidden="true">AT</span>
+        ATS Resume Builder
+      </a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- Hardcoded admin login -->
+    <section id="admin-login-section" class="card auth-card admin-card" aria-labelledby="admin-login-heading">
+      <h1 id="admin-login-heading">Admin Login</h1>
+      <p class="subtitle">Restricted access. Use admin credentials only.</p>
+
+      <form id="admin-login-form" class="auth-form">
+        <label for="admin-email">Admin Email</label>
+        <input type="email" id="admin-email" required placeholder="admin@aireumebuilder.com" />
+
+        <label for="admin-password">Password</label>
+        <input type="password" id="admin-password" required placeholder="Admin password" />
+
+        <p id="admin-login-error" class="form-error" role="alert"></p>
+
+        <button type="submit" class="btn btn-primary">Enter Dashboard</button>
+      </form>
+    </section>
+
+    <!-- Dashboard (after login) -->
+    <section id="admin-dashboard" class="hidden" aria-labelledby="dashboard-heading">
+      <div class="dashboard-header">
+        <h1 id="dashboard-heading">Admin Dashboard</h1>
+        <div class="dashboard-actions">
+          <button type="button" id="refresh-stats-btn" class="btn btn-secondary">Refresh</button>
+          <button type="button" id="admin-logout-btn" class="btn btn-outline">Log Out</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card card">
+          <h2>Total Users</h2>
+          <p id="stat-total-users" class="stat-value">0</p>
+        </article>
+        <article class="stat-card card">
+          <h2>Resumes Created</h2>
+          <p id="stat-total-resumes" class="stat-value">0</p>
+        </article>
+      </div>
+
+      <article class="card emails-card">
+        <h2>Registered User Emails</h2>
+        <ul id="user-emails-list" class="email-list"></ul>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Admin Panel — ATS Resume Builder</p>
+  </footer>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

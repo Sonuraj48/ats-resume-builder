@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATS Resume Builder — ATS-Friendly Resumes</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main navigation">
+      <a href="index.html" class="logo">
+        <span class="logo-mark" aria-hidden="true">AT</span>
+        ATS Resume Builder
+      </a>
+      <div class="nav-user">
+        <span id="user-email-display" class="user-email"></span>
+        <button type="button" id="logout-btn" class="btn btn-ghost hidden">Log out</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- Sign in -->
+    <section id="auth-section" class="auth-layout" aria-labelledby="auth-heading">
+      <div class="auth-intro">
+        <p class="eyebrow">Trusted by students &amp; professionals</p>
+        <h1 id="auth-heading">Create a resume that gets past ATS filters</h1>
+        <p class="lead">
+          Build once, save to the cloud, and download a polished PDF—without design stress or formatting guesswork.
+        </p>
+        <ul class="value-list">
+          <li><strong>Live preview</strong> — see exactly what you export</li>
+          <li><strong>ATS-friendly layout</strong> — clear sections recruiters scan in seconds</li>
+          <li><strong>Your data, your account</strong> — pick up where you left off</li>
+        </ul>
+        <p class="audience-note">
+          <span class="audience-chip">Students</span> Highlight projects, internships, and grades.
+          <span class="audience-chip">Professionals</span> Lead with impact and recent experience.
+        </p>
+      </div>
+
+      <div class="card auth-card">
+        <h2 class="auth-card-title">Welcome back</h2>
+        <p class="subtitle">Sign in or create a free account to save and export your resume.</p>
+
+        <div class="auth-mode-tabs" role="tablist" aria-label="Authentication mode">
+          <button type="button" id="auth-mode-login" class="tab active" role="tab" aria-selected="true">Log in</button>
+          <button type="button" id="auth-mode-signup" class="tab" role="tab" aria-selected="false">Sign up</button>
+        </div>
+
+        <form id="auth-form" class="auth-form">
+          <label for="auth-email">Email</label>
+          <input type="email" id="auth-email" required autocomplete="email" placeholder="you@university.edu or work email" />
+
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" required minlength="6" autocomplete="current-password" placeholder="At least 6 characters" />
+
+          <p id="auth-error" class="form-error" role="alert"></p>
+          <button type="submit" id="auth-submit" class="btn btn-primary btn-block">Log in</button>
+        </form>
+
+        <p class="auth-toggle">
+          <span id="auth-toggle-text">Don't have an account?</span>
+          <a href="#" id="auth-toggle-link">Create one</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- Builder -->
+    <section id="builder-section" class="builder-layout hidden" aria-labelledby="builder-heading">
+      <header class="builder-top">
+        <div>
+          <p class="eyebrow">Your workspace</p>
+          <h1 id="builder-heading">Build your resume</h1>
+          <p class="lead builder-lead">
+            Add details on the left—preview updates instantly. Save often; export when you're ready to apply.
+          </p>
+        </div>
+      </header>
+
+      <div class="builder-grid">
+        <aside class="form-panel card" aria-label="Resume form">
+          <div class="form-panel-head">
+            <h2>Resume details</h2>
+            <p class="form-panel-hint">Tip: Use action verbs and numbers where you can (e.g. “Increased sales by 20%”).</p>
+          </div>
+
+          <form id="resume-form" class="resume-form" onsubmit="return false;">
+            <fieldset>
+              <legend>Contact &amp; links</legend>
+              <p class="fieldset-hint">Recruiters spend ~6 seconds on first scan—make name and contact easy to find.</p>
+              <label for="resume-name">Full Name</label>
+              <input type="text" id="resume-name" placeholder="Your full name" autocomplete="name" />
+
+              <label for="resume-phone">Phone</label>
+              <input type="tel" id="resume-phone" placeholder="+91 98765 43210" autocomplete="tel" />
+
+              <label for="resume-email">Email</label>
+              <input type="email" id="resume-email" placeholder="professional@email.com" autocomplete="email" />
+
+              <label for="resume-location">Location</label>
+              <input type="text" id="resume-location" placeholder="City, State, Country" />
+
+              <span class="field-label">Work preferences <span class="label-optional">(optional)</span></span>
+              <div class="checkbox-group" role="group" aria-label="Work preferences">
+                <label class="checkbox-chip">
+                  <input type="checkbox" name="work-pref" value="remote" data-work-pref="remote" />
+                  Open to Remote
+                </label>
+                <label class="checkbox-chip">
+                  <input type="checkbox" name="work-pref" value="onsite" data-work-pref="onsite" />
+                  Open to On-site
+                </label>
+                <label class="checkbox-chip">
+                  <input type="checkbox" name="work-pref" value="hybrid" data-work-pref="hybrid" />
+                  Open to Hybrid
+                </label>
+              </div>
+
+              <label for="resume-linkedin">LinkedIn <span class="label-optional">(optional)</span></label>
+              <input type="url" id="resume-linkedin" placeholder="https://linkedin.com/in/your-profile" />
+
+              <label for="resume-github">GitHub <span class="label-optional">(optional)</span></label>
+              <input type="url" id="resume-github" placeholder="https://github.com/username" />
+
+              <label for="resume-portfolio">Portfolio <span class="label-optional">(optional)</span></label>
+              <input type="url" id="resume-portfolio" placeholder="https://your-portfolio.com" />
+            </fieldset>
+
+            <fieldset>
+              <legend>Summary</legend>
+              <p class="fieldset-hint">2–4 sentences: who you are, strengths, and what role you're targeting.</p>
+              <label for="resume-summary" class="sr-only">Professional summary</label>
+              <textarea id="resume-summary" rows="4" placeholder="Motivated graduate with experience in… Seeking a role in…"></textarea>
+            </fieldset>
+
+            <fieldset class="dynamic-fieldset">
+              <div class="fieldset-head">
+                <div>
+                  <legend>Experience</legend>
+                  <p class="fieldset-hint">Most recent role first. Internships and part-time work count.</p>
+                </div>
+                <button type="button" id="add-experience-btn" class="btn btn-add btn-sm">+ Add</button>
+              </div>
+              <div id="experience-entries" class="entries-list"></div>
+            </fieldset>
+
+            <fieldset class="dynamic-fieldset">
+              <div class="fieldset-head">
+                <div>
+                  <legend>Education</legend>
+                  <p class="fieldset-hint">Include school, college, or university—plus GPA if it helps you.</p>
+                </div>
+                <button type="button" id="add-education-btn" class="btn btn-add btn-sm">+ Add</button>
+              </div>
+              <div id="education-entries" class="entries-list"></div>
+            </fieldset>
+
+            <fieldset class="dynamic-fieldset">
+              <div class="fieldset-head">
+                <div>
+                  <legend>Certifications</legend>
+                  <p class="fieldset-hint">Short courses and credentials show continuous learning.</p>
+                </div>
+                <button type="button" id="add-certification-btn" class="btn btn-add btn-sm">+ Add</button>
+              </div>
+              <div id="certification-entries" class="entries-list"></div>
+            </fieldset>
+
+            <fieldset class="dynamic-fieldset">
+              <div class="fieldset-head">
+                <div>
+                  <legend>Projects</legend>
+                  <p class="fieldset-hint">Strong for students and career switchers—link demos when possible.</p>
+                </div>
+                <button type="button" id="add-project-btn" class="btn btn-add btn-sm">+ Add</button>
+              </div>
+              <div id="project-entries" class="entries-list"></div>
+            </fieldset>
+
+            <fieldset class="dynamic-fieldset">
+              <div class="fieldset-head">
+                <div>
+                  <legend>Skills</legend>
+                  <p class="fieldset-hint">Group by category (e.g. Programming, Tools) so scanners pick them up.</p>
+                </div>
+                <button type="button" id="add-skill-btn" class="btn btn-add btn-sm">+ Add</button>
+              </div>
+              <div id="skill-entries" class="entries-list"></div>
+            </fieldset>
+          </form>
+
+          <div class="form-actions-sticky">
+            <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
+            <div class="form-actions">
+              <button type="button" id="export-pdf-btn" class="btn btn-accent btn-block-mobile">
+                Download PDF
+              </button>
+              <button type="button" id="save-resume-btn" class="btn btn-primary">Save</button>
+              <button type="button" id="load-resume-btn" class="btn btn-secondary">Reload</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="preview-panel card">
+          <div class="preview-panel-head">
+            <h2 class="preview-title">Live preview</h2>
+            <p class="preview-subtitle">This matches your downloaded PDF</p>
+          </div>
+          <article id="resume-preview" class="resume-preview cv-template" aria-label="Resume preview"></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>ATS Resume Builder — ATS-friendly resumes for your next opportunity</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <script type="module" src="auth.js"></script>
+  <script type="module" src="resume.js"></script>
+</body>
+</html>

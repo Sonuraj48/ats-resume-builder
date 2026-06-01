@@ -1,0 +1,16 @@
+# Netlify deployment config for ATS Resume Builder
+# Static site — publish root directory; no build command required.
+
+[build]
+  publish = "."
+  command = "echo 'No build step — static HTML/CSS/JS'"
+
+# Deploy previews and production
+[context.production]
+  environment = { NODE_VERSION = "20" }
+
+[context.deploy-preview]
+  environment = { NODE_VERSION = "20" }
+
+# Connect repo: Netlify → Site settings → Build & deploy → Continuous deployment
+# Branch: main — every push to main triggers auto-deploy.
