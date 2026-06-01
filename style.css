@@ -637,7 +637,7 @@ body {
   overflow: visible;
 }
 
-/* PDF capture sandbox — mirrors live preview (off-screen, still painted for canvas) */
+/* Off-screen clone for PDF capture (matches live preview) */
 .pdf-export-sandbox {
   position: fixed;
   left: 0;
@@ -963,5 +963,68 @@ body {
 
   .form-actions .btn-accent {
     flex: 1 1 100%;
+  }
+}
+
+/* --- Print / Save as PDF (same HTML as live preview) --- */
+@media print {
+  @page {
+    size: letter;
+    margin: 0;
+  }
+
+  body.is-printing-resume {
+    background: #fff !important;
+  }
+
+  body.is-printing-resume .site-header,
+  body.is-printing-resume .site-footer,
+  body.is-printing-resume #auth-section,
+  body.is-printing-resume .builder-top,
+  body.is-printing-resume .form-panel,
+  body.is-printing-resume .preview-panel-head,
+  body.is-printing-resume .form-actions-sticky {
+    display: none !important;
+  }
+
+  body.is-printing-resume .container,
+  body.is-printing-resume #builder-section,
+  body.is-printing-resume .builder-grid,
+  body.is-printing-resume .preview-panel {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    position: static !important;
+  }
+
+  body.is-printing-resume #builder-section.hidden {
+    display: block !important;
+  }
+
+  body.is-printing-resume .resume-preview.cv-template {
+    max-width: 8.5in;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0.5in 0.55in;
+    border: none !important;
+    box-shadow: none !important;
+    box-sizing: border-box;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.is-printing-resume .cv-template a {
+    color: #0000ee !important;
+    text-decoration: underline;
+  }
+
+  body.is-printing-resume .cv-section-title {
+    border-color: #000 !important;
   }
 }

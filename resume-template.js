@@ -37,6 +37,14 @@ function telHref(phone) {
   return digits ? `tel:${digits}` : "";
 }
 
+/** Absolute URL so PDF viewers and print engines recognize links */
+function normalizeExternalUrl(url) {
+  const s = String(url ?? "").trim();
+  if (!s) return "";
+  if (/^(https?:|mailto:|tel:)/i.test(s)) return s;
+  return `https://${s.replace(/^\/\//, "")}`;
+}
+
 /** Contact line with clickable phone (tel) and email (mailto) */
 function buildContactLine(n) {
   const items = [];
@@ -204,10 +212,10 @@ export function renderResume(container, data) {
   const { experience, education, projects, certifications, skills } = n;
 
   const linkParts = [
-    n.linkedin && { href: n.linkedin, label: "LinkedIn" },
-    n.github && { href: n.github, label: "GitHub" },
-    n.portfolio && { href: n.portfolio, label: "Portfolio" },
-  ].filter(Boolean);
+    n.linkedin && { href: normalizeExternalUrl(n.linkedin), label: "LinkedIn" },
+    n.github && { href: normalizeExternalUrl(n.github), label: "GitHub" },
+    n.portfolio && { href: normalizeExternalUrl(n.portfolio), label: "Portfolio" },
+  ].filter((l) => l.href);
 
   const hasExperience = experience.some((e) => e.title || e.company || e.intro || e.bullets?.length);
   const hasEducation = education.some(
@@ -398,8 +406,9 @@ function projectHtml(p) {
   const bullets = Array.isArray(p.bullets) ? p.bullets : bulletsToLines(p.bullets);
   if (!p.title && !p.url && !bullets.length) return "";
 
-  const link = p.url
-    ? ` <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Link</a>`
+  const projectUrl = normalizeExternalUrl(p.url);
+  const link = projectUrl
+    ? ` <a href="${escapeHtml(projectUrl)}" target="_blank" rel="noopener">Link</a>`
     : "";
   return `
     <article class="cv-entry cv-project">
