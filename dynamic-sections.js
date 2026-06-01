@@ -15,7 +15,7 @@ function field(label, name, value, placeholder, type = "text") {
   if (type === "textarea") {
     return `
       <label for="${id}">${label}</label>
-      <textarea id="${id}" data-field="${name}" rows="3" placeholder="${placeholder}">${escapeAttr(value)}</textarea>
+      <textarea id="${id}" data-field="${name}" rows="${name === "intro" || name === "bullets" ? 5 : 3}" placeholder="${placeholder}">${escapeAttr(value)}</textarea>
     `;
   }
   return `
