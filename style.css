@@ -566,7 +566,7 @@ body {
 
 .preview-panel .resume-preview.cv-template {
   width: 100%;
-  max-width: 8.5in;
+  max-width: 210mm;
 }
 
 .preview-title {
@@ -628,7 +628,7 @@ body {
   color: #000;
   background: #fff;
   padding: 0.5in 0.55in;
-  max-width: 8.5in;
+  max-width: 210mm;
   width: 100%;
   margin: 0 auto;
   border: 1px solid #ccc;
@@ -652,6 +652,8 @@ body {
   display: block;
   min-width: 0 !important;
   margin: 0 !important;
+  width: 210mm !important;
+  max-width: 210mm !important;
   padding: 0.5in 0.55in !important;
   border: 1px solid #ccc !important;
   box-shadow: none !important;
@@ -969,7 +971,7 @@ body {
 /* --- Print / Save as PDF (same HTML as live preview) --- */
 @media print {
   @page {
-    size: letter;
+    size: A4;
     margin: 0;
   }
 
@@ -1007,7 +1009,7 @@ body {
   }
 
   body.is-printing-resume .resume-preview.cv-template {
-    max-width: 8.5in;
+    max-width: 210mm;
     width: 100%;
     margin: 0 auto;
     padding: 0.5in 0.55in;

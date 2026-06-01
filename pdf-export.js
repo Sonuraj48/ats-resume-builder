@@ -1,7 +1,11 @@
 /**
- * pdf-export.js — High-quality PDF with clickable link annotations.
- * (Browser "Print to PDF" often drops links, especially on Windows.)
+ * pdf-export.js — A4 PDF with clickable link annotations.
  */
+
+const A4_WIDTH_MM = 210;
+const A4_HEIGHT_MM = 297;
+/** Match preview padding: 0.5in top/bottom, 0.55in left/right */
+const A4_MARGIN = { top: 12.7, right: 13.97, bottom: 12.7, left: 13.97 };
 
 let pdfModulesPromise = null;
 
@@ -93,9 +97,8 @@ function buildExportClone(source) {
   sandbox.appendChild(clone);
   document.body.appendChild(sandbox);
 
-  const previewWidth = Math.max(Math.round(source.getBoundingClientRect().width), 320);
-  clone.style.width = `${previewWidth}px`;
-  clone.style.maxWidth = `${previewWidth}px`;
+  clone.style.width = `${A4_WIDTH_MM}mm`;
+  clone.style.maxWidth = `${A4_WIDTH_MM}mm`;
 
   return { clone, sandbox };
 }
@@ -129,21 +132,60 @@ function collectExportLinks(rootEl) {
   return links;
 }
 
-function addPdfLinkAnnotations(pdf, links, mapRect, padMm) {
+function addPdfLinkAnnotationsForPage(pdf, links, pageIndex, layout, padMm) {
+  const { margin, usableW, usableH, imgHeightMm, contentWidth, contentHeight } = layout;
+  const pageTopMm = pageIndex * usableH;
+
   for (const { href, x, y, w, h } of links) {
-    const r = mapRect(x, y, w, h);
+    const linkTopMm = (y / contentHeight) * imgHeightMm;
+    const linkBottomMm = ((y + h) / contentHeight) * imgHeightMm;
+
+    if (linkBottomMm <= pageTopMm || linkTopMm >= pageTopMm + usableH) continue;
+
+    const lx = margin.left + (x / contentWidth) * usableW;
+    const ly = margin.top + linkTopMm - pageTopMm;
+    const lw = (w / contentWidth) * usableW;
+    const lh = ((h / contentHeight) * imgHeightMm);
+
     try {
       pdf.link(
-        Math.max(0, r.x - padMm),
-        Math.max(0, r.y - padMm),
-        r.w + padMm * 2,
-        r.h + padMm * 2,
+        Math.max(margin.left, lx - padMm),
+        Math.max(margin.top, ly - padMm),
+        lw + padMm * 2,
+        lh + padMm * 2,
         { url: href }
       );
     } catch (err) {
       console.warn("PDF link skipped:", href, err);
     }
   }
+}
+
+/** Slice tall canvas across A4 pages */
+function addCanvasToA4Pages(pdf, imgData, canvas, layout) {
+  const { margin, usableW, usableH, imgHeightMm } = layout;
+  let offsetMm = 0;
+  let pageIndex = 0;
+
+  while (offsetMm < imgHeightMm - 0.01) {
+    if (pageIndex > 0) {
+      pdf.addPage("a4", "portrait");
+    }
+    pdf.addImage(
+      imgData,
+      "PNG",
+      margin.left,
+      margin.top - offsetMm,
+      usableW,
+      imgHeightMm,
+      undefined,
+      "NONE"
+    );
+    offsetMm += usableH;
+    pageIndex += 1;
+  }
+
+  return pageIndex;
 }
 
 function getExportScale(contentWidth, contentHeight) {
@@ -207,29 +249,38 @@ export async function exportResumeToPdf(sourceEl, { filename, onStatus }) {
     });
 
     const imgData = canvas.toDataURL("image/png");
-    const pageWidthMm = 215.9;
-    const pageHeightMm = (contentHeight / contentWidth) * pageWidthMm;
+    const margin = A4_MARGIN;
+    const usableW = A4_WIDTH_MM - margin.left - margin.right;
+    const usableH = A4_HEIGHT_MM - margin.top - margin.bottom;
+    const imgHeightMm = (canvas.height / canvas.width) * usableW;
+
+    const layout = {
+      margin,
+      usableW,
+      usableH,
+      imgHeightMm,
+      contentWidth,
+      contentHeight,
+    };
 
     const pdf = new JsPDF({
       unit: "mm",
-      format: [pageWidthMm, pageHeightMm],
+      format: "a4",
       orientation: "portrait",
       compress: false,
     });
 
-    pdf.addImage(imgData, "PNG", 0, 0, pageWidthMm, pageHeightMm, undefined, "NONE");
+    const pageCount = addCanvasToA4Pages(pdf, imgData, canvas, layout);
+    const linkPadMm = Math.max(0.4, (2 / contentWidth) * usableW);
 
-    const mapRect = (x, y, w = 0, h = 0) => ({
-      x: (x / contentWidth) * pageWidthMm,
-      y: (y / contentHeight) * pageHeightMm,
-      w: w ? (w / contentWidth) * pageWidthMm : 0,
-      h: h ? (h / contentHeight) * pageHeightMm : 0,
-    });
-    const linkPadMm = Math.max(0.4, (2 / contentWidth) * pageWidthMm);
-    addPdfLinkAnnotations(pdf, exportLinks, mapRect, linkPadMm);
+    for (let p = 0; p < pageCount; p++) {
+      pdf.setPage(p + 1);
+      addPdfLinkAnnotationsForPage(pdf, exportLinks, p, layout, linkPadMm);
+    }
 
     pdf.save(filename);
-    onStatus("PDF downloaded — links are clickable in the file.");
+    const pagesNote = pageCount > 1 ? ` (${pageCount} A4 pages)` : "";
+    onStatus(`PDF downloaded (A4)${pagesNote} — links are clickable.`);
     return true;
   } catch (err) {
     console.error("PDF export error:", err);
